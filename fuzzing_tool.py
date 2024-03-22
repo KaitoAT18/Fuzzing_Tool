@@ -3,78 +3,197 @@ from colorama import Fore
 from bs4 import BeautifulSoup
 import requests
 import pyfiglet
-
-
-# Scan hidden address
+import re
 
 # SQL Injection
-def sqli(url):
-    mysql_attacks = []
-    check = False
+def sqli_low(url):
+    payload = {
+        'username': 'admin',
+        'password': 'password',
+        'Login': 'Login'
+    }
+    payload_levels = {
+        1: {'security': 'low', 'seclev_submit': 'Submit'},
+        2: {'security': 'medium', 'seclev_submit': 'Submit'},
+        3: {'security': 'high', 'seclev_submit': 'Submit'}
+    }
+    with requests.Session() as c:
+        # Login
+        r = c.get('http://127.0.0.1/dvwa/login.php')
+        token = re.search("user_token'\s*value='(.*?)'", r.text).group(1)
+        payload['user_token'] = token
+        p = c.post('http://127.0.0.1/dvwa/login.php', data=payload)
+        
+        # Setting security level
+        payload_level = payload_levels.get(1, None)
+        if payload_level:
+            payload_level['user_token'] = token
+            p = c.post('http://127.0.0.1/dvwa/security.php', data=payload_level)
+        else:
+            print(Fore.RED + "[!]Invalid security level selected. Defaulting to 'low'." + Fore.RESET)
+            p = c.post('http://127.0.0.1/dvwa/security.php', data=payload_levels[1])
+        
+        # SQLI
+        sqli_payloads = []
+        with open('/home/kaito/Python/sqli_payloads.txt', 'r') as file:
+            for line in file:
+                sqli_payload = line[:-1]
+                sqli_payloads.append(sqli_payload)
+        response = c.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser').find_all('input')
+        data = {}
+        check = False
+        print(Fore.YELLOW + f'Target website: {url} - Security Level: {payload_level["security"]}\n' + Fore.RESET)
+        payloads_pass = []
+        for payload in sqli_payloads:
+                print(f'{Fore.GREEN} [+]Testing: {Fore.RESET} {payload}')
+                for field in soup:
+                    if field['type'].lower() == 'text':
+                        data[field['name']] = payload
+                        data['Submit'] = 'Submit' 
+                response = c.get(url=url, params=data)
+                if payload in response.text:
+                    payloads_pass.append(payload)
+                    check = True
+        if check:
+            print(Fore.RED + f'\n[**]Payloads pass: \n' + Fore.RESET)
+            for payload in payloads_pass:
+                print(Fore.GREEN + f'[+]Payload: {payload}' + Fore.RESET)
+            print(Fore.RED + '\n[***]The website is vulnerable to SQLI[***]' + Fore.RESET)
+        else:
+            print(Fore.GREEN + '\n[***]The website may be not vulnerable to SQLI[***]' + Fore.RESET)
 
-    print(Fore.GREEN + f'Target website: {url}\n' + Fore.RESET)
+def sqli_medium(url):
+    payload = {
+        'username': 'admin',
+        'password': 'password',
+        'Login': 'Login'
+    }
+    payload_levels = {
+        1: {'security': 'low', 'seclev_submit': 'Submit'},
+        2: {'security': 'medium', 'seclev_submit': 'Submit'},
+        3: {'security': 'high', 'seclev_submit': 'Submit'}
+    }
+    with requests.Session() as c:
+        # Login
+        r = c.get('http://127.0.0.1/dvwa/login.php')
+        token = re.search("user_token'\s*value='(.*?)'", r.text).group(1)
+        payload['user_token'] = token
+        p = c.post('http://127.0.0.1/dvwa/login.php', data=payload)
+        headers = r.request.headers
 
-    # open file and read the content in a list
-    with open('/Users/lehoangminh/Workspace/KTLT_FUZZING/Fuzzer_Team9/attack_vector/sqli_vector', 'r') as file:
-        for line in file:
-            attack = line[:-1]
-            mysql_attacks.append(attack)
+        # Setting security level
+        payload_level = payload_levels.get(2, None)
+        if payload_level:
+            payload_level['user_token'] = token
+            p = c.post('http://127.0.0.1/dvwa/security.php', data=payload_level)
+        else:
+            print(Fore.RED + "[!]Invalid security level selected. Defaulting to 'low'." + Fore.RESET)
+            p = c.post('http://127.0.0.1/dvwa/security.php', data=payload_levels[1])
+        
+        # SQLI
+        sqli_payloads = []
+        with open('/home/kaito/Python/sqli_payloads.txt', 'r') as file:
+            for line in file:
+                sqli_payload = line[:-1]
+                sqli_payloads.append(sqli_payload)
+        
+        response = c.get(url)
+        data = {}
+        check = False
+        payloads_pass = []
+        print(Fore.YELLOW + f'Target website: {url} - Security Level: {payload_level["security"]}\n' + Fore.RESET)
 
-    for attack in mysql_attacks:
-        print(Fore.GREEN + "[+]Testing... " + url + attack)
-        response = requests.get(url + attack)
-        if "mysql" not in response.text.lower():
-            check = True
-            print(Fore.RED + "[*]Attack string: " + attack + Fore.RESET)
-
-    if check:
-        print(Fore.RED + '\n[***]The website is vulnerable to SQLI' + Fore.RESET)
-    else:
-        print(Fore.GREEN + '\n[***]The website may be not vulnerable to SQLI' + Fore.RESET)
+        for payload in sqli_payloads:
+            print(f'{Fore.GREEN} [+]Testing: {Fore.RESET} {payload}')
+            data['id'] = payload
+            data['Submit'] = 'Submit' 
+            response = c.post(url=url, data=data) 
+            if payload in response.text:
+                payloads_pass.append(payload)
+                check = True
+        if check:
+            print(Fore.RED + f'\n[**]Payloads pass: \n' + Fore.RESET)
+            for payload in payloads_pass:
+                print(Fore.GREEN + f'[+]Payload: {payload}' + Fore.RESET)
+            print(Fore.RED + '\n[***]The website is vulnerable to SQLI[***]' + Fore.RESET)
+        else:
+            print(Fore.GREEN + '\n[***]The website may be not vulnerable to SQLI[***]' + Fore.RESET)
 
 # XSS
-def xss(url):
-    # Get payload from file
-    xss_payloads = []
-    with open('/Users/lehoangminh/Workspace/KTLT_FUZZING/Fuzzer_Team9/attack_vector/xss_vector.txt', 'r') as file:
-        for line in file:
-            xss_payload = line[:-1]
-            xss_payloads.append(xss_payload)
+def xss(url, sec_level):
+    payload = {
+        'username': 'admin',
+        'password': 'password',
+        'Login': 'Login'
+    }
 
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser').find_all('input')
-    data = {}
-    check = False
+    payload_levels = {
+        1: {'security': 'low', 'seclev_submit': 'Submit'},
+        2: {'security': 'medium', 'seclev_submit': 'Submit'},
+        3: {'security': 'high', 'seclev_submit': 'Submit'}
+    }
 
-    print(Fore.GREEN + f'Target website: {url}\n' + Fore.RESET)
+    with requests.Session() as c:
+        # Login
+        r = c.get('http://127.0.0.1/dvwa/login.php')
+        token = re.search("user_token'\s*value='(.*?)'", r.text).group(1)
+        payload['user_token'] = token
+        p = c.post('http://127.0.0.1/dvwa/login.php', data=payload)
 
-    for payload in xss_payloads:
-        for field in soup:
-            if field['type'].lower() == 'text':
-                data[field['name']] = payload
+        # Setting security level
+        payload_level = payload_levels.get(sec_level, None)
+        if payload_level:
+            payload_level['user_token'] = token
+            p = c.post('http://127.0.0.1/dvwa/security.php', data=payload_level)
+        else:
+            print(Fore.RED + "[!]Invalid security level selected. Defaulting to 'low'." + Fore.RESET)
+            p = c.post('http://127.0.0.1/dvwa/security.php', data=payload_levels[1])
 
-        response = requests.post(url, data=data)
-        if payload in response.text:
-            print(Fore.GREEN + f'[+]Payload: {payload} => returned in the response' + Fore.RESET)
-            check = True
+        # XSS Testing - Reflected
+        xss_payloads = []
+        with open('/home/kaito/Python/xss_payloads.txt', 'r') as file:
+            for line in file:
+                xss_payload = line[:-1]
+                xss_payloads.append(xss_payload)
 
-    if not check:
-        print(Fore.GREEN + '\n[***]The website may be not vulnerable to XSS' + Fore.RESET)
-    else:
-        print(Fore.RED + '\n[***]The website is vulnerable to XSS' + Fore.RESET)
+        response = c.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser').find_all('input')
+        data = {}
+        check = False
+        payloads_pass = []
+
+        print(Fore.YELLOW + f'Target website: {url} - Security Level: {payload_level["security"]}\n' + Fore.RESET)
+
+        for payload in xss_payloads:
+                print(f'{Fore.GREEN} [+]Testing: {Fore.RESET} {payload}')
+                for field in soup:
+                    if field['type'].lower() == 'text':
+                        data[field['name']] = payload
+
+                response = c.get(url=url, params=data)
+                if payload in response.text:
+                    payloads_pass.append(payload)
+                    check = True
+        if not check:
+            print(Fore.GREEN + '\n[***]The website may be not vulnerable to XSS[***]' + Fore.RESET)
+        else:
+            print(Fore.RED + f'\n[**]Payloads pass: \n' + Fore.RESET)
+            for payload in payloads_pass:
+                print(Fore.GREEN + f'[+]Payload: {payload}' + Fore.RESET)
+            print(Fore.RED + '\n[***]The website is vulnerable to XSS[***]' + Fore.RESET)
 
 # Process mode
-def process_mode(mode, url):
+def process_mode(mode, url, sec_level):
     if mode == 'XSS':
-        xss(url)
+        xss(url, sec_level)
     elif mode == 'SQLI':
-        sqli(url)
-
-
-# Process scan hidden address
-def process_scan(scan, url):
-    print('Scan - Fuzzing Tool')
-
+        if sec_level == 1:
+            sqli_low(url)
+        elif sec_level == 2:
+            sqli_medium(url)
+        elif sec_level == 3:
+            print(Fore.LIGHTBLUE_EX + 'The feature is being updated.' + Fore.RESET)
 
 def create_banner():
     banner = pyfiglet.figlet_format("Fuzzing Tool", font='slant', justify='center')
@@ -91,24 +210,15 @@ def main():
 
     # Add the arguments
     parser.add_argument('-u', '--url', help='URL of the target website', required=True)
-    parser.add_argument('-m', '--mode', choices=['SQLI', 'XSS'], help='Type of vulnerability scan')
-    parser.add_argument('-s', '--scan', action='store_true', help='Scan hidden address in website')
+    parser.add_argument('-m', '--mode', choices=['SQLI', 'XSS'], help='Type of vulnerability scan', required=True)
+    parser.add_argument('-s', '--sec_level', type=int, choices=[1, 2, 3], help='Security level (1: low, 2: medium, 3: high)', default=1)
 
     # Parse the arguments
     args = parser.parse_args()
 
     # Perform the scanning logic
     try:
-        if args.mode and args.scan:
-            print(Fore.RED + "[!]Invalid mode. Choose only one of options: mode or scan")
-            print(Fore.RESET)
-        elif args.mode:
-            process_mode(args.mode, args.url)
-        elif args.scan:
-            process_scan(args.scan, args.url)
-        else:
-            print(Fore.RED + "[!]Invalid mode. Choose mode or scan")
-            print(Fore.RESET)
+        process_mode(args.mode, args.url, args.sec_level)
     except Exception as e:
         print(Fore.RED + f'[!]{e}')
         print(Fore.RESET)
